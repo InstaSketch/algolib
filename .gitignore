@@ -1,0 +1,4 @@
+build/
+.idea/
+image_db.db
+*.pyc
