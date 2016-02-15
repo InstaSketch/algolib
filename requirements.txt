@@ -1,3 +1,6 @@
 cv2
-shelve
+joblib
 numpy
+scipy
+cProfile
+matplotlib

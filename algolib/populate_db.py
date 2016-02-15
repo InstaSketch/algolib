@@ -1,124 +1,63 @@
-from algolib import config
-from index_tree import index_tree
+__author__ = 'Bryan Kok'
 
-import shelve
+from algolib import config
+
+from db_manager import db_manager_flat_file
 import os
 import cv2
-import itertools
-import numpy as np
 
-def listImages(directory):
-    img_types = set(config['img_types'])
-    return map(lambda y: os.path.join(directory, y),
-               filter(lambda x: os.path.splitext(x)[1] in img_types, os.listdir(directory)))
+from descriptors.BoW_descriptor import BoWDescriptor
+from descriptors.color_descriptor import ColorDescriptor
 
+class db_populator:
+    def __init__(self, db_file):
+        self.db_manager = db_manager_flat_file(db_file)
+        self.BoW_des = BoWDescriptor()
+        self.color_des = ColorDescriptor(config["color_histogram_bins"])
 
-def create_db(filename, directory_list):
-    idb = shelve.open(filename, writeback=True)
-
-    global_histogram = [0] * 510
-    total_pixels = 0
-    name_to_median = {}
-
-    tree_root = index_tree(True)
-
-    for img in list(itertools.chain.from_iterable(
-            map(lambda directory: listImages(directory), filter(lambda x: os.path.exists(x), directory_list)))):
-        bgr_img = cv2.imread(img)
-        rg = bgr_img[:, :, 2].astype(int) - bgr_img[:, :, 1].astype(int)
-        name_to_median[img] = np.median(rg)
-        tree_root.images.append(img)
-        # print rg.min()
-        # break
-        total_pixels = total_pixels + rg.shape[0] * rg.shape[1]
-        global_histogram = np.add(global_histogram, np.histogram(rg, range(-255, 256))[0])
-
-    median_point = total_pixels/2
-    histogram_index = 0
-
-    # print global_histogram
-    while median_point > 0:
-        # print median_point
-        median_point = median_point - global_histogram[histogram_index]
-        histogram_index += 1
-
-    histogram_index -= 255 - 1
-    # print histogram_index-255-1
-    # print name_to_median
-
-    left = []
-    right = []
-    for key, value in name_to_median.iteritems():
-        print value
-        if value < histogram_index:
-            left.append(key)
+    def list_images(self, directory, recursive=False):
+        img_types = set(config['img_types'])
+        if recursive:
+            trav = os.walk(directory)
+            imgs_found = []
+            for i in trav:
+                imgs_found += map(lambda x: os.path.join(i[0], x), ( filter(lambda x: os.path.splitext(x)[1] in img_types, i[2]) ) )
+            return imgs_found
         else:
-            right.append(key)
-
-    tree_root.median = histogram_index
-
-    tree_root.left = process_subtree(left, False, tree_root, 0)
-    tree_root.right = process_subtree(right, False, tree_root, 0)
-
-    idb['root'] = tree_root
-
-    idb.close()
-
-# returns a tree, alternates between dividing the RG or BY component at every level
-def process_subtree(images, is_rg, parent, level):
-    level = level + 1
-    print level
-
-    print images
-    histogram = [0] * 510
-    total_pixels = 0
-    name_to_median = {}
-
-    tree_root = index_tree(is_rg)
-
-    tree_root.images = images
-    tree_root.parent = parent
-
-    if len(images) == len(parent.images):
-        return None
-
-    for img in images:
-        bgr_img = cv2.imread(img)
-        if is_rg:
-            component = bgr_img[:,:,2].astype(int) - bgr_img[:,:,1].astype(int)
-        else:
-            component = 0.5*(bgr_img[:,:,2].astype(int)+bgr_img[:,:,1].astype(int)) - bgr_img[:,:,0].astype(int)
-
-        name_to_median[img] = np.median(component)
-        total_pixels = total_pixels + component.shape[0] * component.shape[1]
-        histogram = np.add(histogram, np.histogram(component, range(-255, 256))[0])
+            return map(lambda y: os.path.join(directory, y), filter(lambda x: os.path.splitext(x)[1] in img_types, os.listdir(directory)))
 
 
-    median_point = total_pixels/2
-    histogram_index = 0
+    def add_dir(self, directory, recursive=False, overwrite=False):
+        # overwrite controls whether the means are recomputed (and thus the existing BoW histograms invalidated.)
+        # files of the same path will have both histograms recomputed in any case.
+        path_list = self.list_images(directory, recursive)
+        assert len(path_list) > 0
 
-    # print global_histogram
-    while median_point > 0:
-        # print median_point
-        median_point = median_point - histogram[histogram_index]
-        histogram_index += 1
+        def yield_image_matrices():
+            for i in path_list:
+                # img = cv2.imread(i, cv2.CV_LOAD_IMAGE_GRAYSCALE)
+                img = cv2.imread(i)
+                # yield i, cv2.resize(img, (300,300))
+                yield i, img
 
-    # print histogram_index
-    histogram_index -= 255 - 1
-    tree_root.median = histogram_index
+        if overwrite:
+            # todo: recompute existing images' histograms since we store their feature descriptors in the DB anyways
+            self.db_manager.empty_db()
+            img_list = yield_image_matrices()
+            vocabulary = self.BoW_des.compute_vocabulary(img_list, config["BoW_dictionary_size"])
+            self.db_manager.set_BoW_vocabulary(vocabulary)
+            self.db_manager.commit()
 
-    left = []
-    right = []
-    for key, value in name_to_median.iteritems():
-        if value < histogram_index:
-            left.append(key)
-        else:
-            right.append(key)
+        img_list = yield_image_matrices()
 
-    if len(left) > 1:
-        tree_root.left = process_subtree(left, not is_rg, tree_root, level)
+        for path, img in img_list:
+            print path
+            img_entry = self.db_manager.add_img(path)
 
-    if len(right) > 1:
-        tree_root.right = process_subtree(right, not is_rg, tree_root, level)
+            BoW_hist = self.BoW_des.describe(img, self.db_manager.get_BoW_vocabulary())
+            img_entry.set_BoW_hist(BoW_hist)
 
-    return tree_root
+            color_hist = self.color_des.describe(img)
+            img_entry.set_color_hist(color_hist)
+
+        self.db_manager.commit()
