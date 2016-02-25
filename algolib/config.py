@@ -1,9 +1,9 @@
 config = {
     "img_types": ['.JPEG', '.JPG', '.jpg', '.png', '.jpeg', '.bmp', '.dcx', '.gif', '.pcx', '.ppm', '.psd', '.tga', '.tif', '.tiff', '.xpm'],
-    "BoW_dictionary_size": 200,
+    "bow_dictionary_size": 200,
     # 8 bins for H, 12 bins for S, 3 bins for V
     # "color_histogram_bins": (8,12,3),
-    "color_histogram_bins": (5,8,3),
-    "compression_level": 3
-
+    "color_histogram_bins": (5, 8, 3),
+    "compression_level": 3,
+    "distance_metrics":  ['jaccard', 'cosine']
 }

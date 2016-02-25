@@ -1,9 +1,7 @@
-__author__ = 'Bryan Kok'
+__author__ = 'Bryan Kok, Dylan Wang'
 
-from config import config
+from algolib.config import config
 
-from query_db import query_db
+from algolib import query
 
-from populate_db import db_populator
-
-import db_manager
+from algolib import populator

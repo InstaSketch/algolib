@@ -1,6 +1,6 @@
 algolib
 =======
-This branch of the library implements the Bag of Words technique as described in section 7.2 of [Programming Computer Vision with Python](http://programmingcomputervision.com/downloads/ProgrammingComputerVision_CCdraft.pdf). 
+This branch of the library implements the Bag of Words technique as described in section 7.2 of [Programming Computer Vision with Python](http://programmingcomputervision.com/downloads/ProgrammingComputerVision_CCdraft.pdf).
 
 Spatial information is currently represented by splitting the image up into 16 equal parts, i.e. a level 2 decomposition in terms of the [Spatial Pyramid Matching](http://www.cs.unc.edu/~lazebnik/publications/pyramid_chapter.pdf) method, and projecting the SIFT descriptors present in that location onto the vocabulary.
 
@@ -30,12 +30,14 @@ https://gist.github.com/Transfusion/32598be2c005dc3764f8
 Script used to generate the above demos:
 https://gist.github.com/Transfusion/52129142a9e8e3e3963f
 
+**SIFT and SURF removed from the default install of OpenCV 3.0, it need OpenCV 3 with the opencv_contrib package**
+
 ##Usage:##
 ```
-Python 2.7.6 (default, Jun 22 2015, 17:58:13) 
+Python 2.7.6 (default, Jun 22 2015, 17:58:13)
 [GCC 4.8.2] on linux2
 >>> import algolib
->>> algolib.db_manager_flat_file.init_db('db.pkl')
+>>> algolib.db_manager.db_manager_flat_file.init_db('db.pkl')
 >>> pop = algolib.db_populator('db.pkl')
 >>> pop.add_dir('/home/transfusion/InstaSketch_Algo/image_repo', recursive=True, overwrite=True)
 

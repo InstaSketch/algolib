@@ -1,6 +1,5 @@
-cv2
 joblib
 numpy
 scipy
-cProfile
+cProfilev
 matplotlib
