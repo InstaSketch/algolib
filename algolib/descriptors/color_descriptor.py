@@ -13,8 +13,9 @@ class ColorDescriptor:
     def describe(self, image):
         # convert the image to the HSV color space and initialize
         # the features used to quantify the image
-        image = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
         image = cv2.resize(image, (300, 300))
+        image = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
+
         features = []
 
         # grab the dimensions and compute the center of the image
@@ -51,7 +52,7 @@ class ColorDescriptor:
         features.extend(hist)
 
         # return the feature vector
-        return features
+        return np.array(features)
 
     def histogram(self, image, mask):
         # extract a 3D color histogram from the masked region of the
@@ -62,6 +63,7 @@ class ColorDescriptor:
         # print hist
         # print hist.shape
         hist = np.array(cv2.normalize(hist, hist).flatten())
+        # hist = cv2.normalize(hist, hist)
 
         # return the histogram
         return hist
