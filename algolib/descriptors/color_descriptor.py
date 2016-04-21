@@ -10,13 +10,13 @@ class ColorDescriptor:
         # store the number of bins for the 3D histogram
         self.bins = bins
 
-    def describe(self, image, sketch, threshold=100):
+    def describe(self, image, sketch=False, threshold=100):
         # convert the image to the HSV color space and initialize
         # the features used to quantify the image
         if not sketch:
             image = cv2.resize(image, (300, 300))
         else:
-            transparent_indices = np.where(image[:,:,3] < threshold)
+            transparent_indices = np.where(image[:, :, 3] < threshold)
 
         image = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
         features = []
@@ -47,13 +47,15 @@ class ColorDescriptor:
                 cornerMask[transparent_indices] = 0
 
                 rectangleMask = np.zeros(image.shape[:2], dtype="uint8")
-                cv2.rectangle(rectangleMask, (startX, startY), (endX, endY), 255, -1)
+                cv2.rectangle(rectangleMask, (startX, startY),
+                              (endX, endY), 255, -1)
                 cornerMask[np.where(rectangleMask == 0)] = 0
                 cornerMask = cv2.subtract(cornerMask, ellipMask)
 
             else:
                 cornerMask = np.zeros(image.shape[:2], dtype="uint8")
-                cv2.rectangle(cornerMask, (startX, startY), (endX, endY), 255, -1)
+                cv2.rectangle(cornerMask, (startX, startY),
+                              (endX, endY), 255, -1)
                 cornerMask = cv2.subtract(cornerMask, ellipMask)
 
             # extract a color histogram from the image, then update the
@@ -64,7 +66,7 @@ class ColorDescriptor:
         # extract a color histogram from the elliptical region and
         # update the feature vector
         if sketch:
-            cornerMask = np.empty(image.shape[:2], dtype = "uint8")
+            cornerMask = np.empty(image.shape[:2], dtype="uint8")
             cornerMask.fill(255)
             cornerMask[transparent_indices] = 0
             cornerMask[np.where(ellipMask == 0)] = 0
@@ -83,7 +85,7 @@ class ColorDescriptor:
         hist = cv2.calcHist([image], [0, 1, 2], mask, self.bins,
                             [0, 180, 0, 256, 0, 256])
 
-        hist = np.array(cv2.normalize(hist,hist).flatten())
+        hist = np.array(cv2.normalize(hist, hist).flatten())
 
         # return the histogram
         return hist

@@ -31,7 +31,7 @@ class Query(object):
                 color, color_hist, method=metric)
             self.matchscores.append((img, bow_dist, color_dist))
 
-    def query_image(self, img, bow_hist, color_hist, img_data, bow_voc, metric):
+    def query_image(self, img, bow_hist, color_hist, img_data, bow_voc, metric, sketch):
         if metric not in self.distance_metrics.keys() or metric is None:
             metric = 'chisqr_alt'
         metric = self.distance_metrics[metric]
@@ -41,7 +41,7 @@ class Query(object):
             queue.put(i)
         if img is not None:
             bow_hist_local = self.bow_des.describe(img, bow_voc)
-            color_hist_local = self.color_des.describe(img)
+            color_hist_local = self.color_des.describe(img, sketch)
 
             for _ in range(8):
                 t = threading.Thread(
