@@ -20,11 +20,15 @@ class Query(object):
         return 0.5 * scipy.sum(result)
 
     def compare(self, bow_hist, color_hist, img_data, metric):
+        temp = []
         for img, bow, color in img_data:
-            bow_dist = scipy.spatial.distance.jaccard(
-                bow, bow_hist)
             color_dist = cv2.compareHist(
                 color, color_hist, method=metric)
+            temp.append((img, bow, color, color_dist))
+        temp = sorted(temp, key=lambda element: (element[3]))[:100]
+        for img, bow, _, color_dist in temp:
+            bow_dist = scipy.spatial.distance.jaccard(
+                bow, bow_hist)
             self.matchscores.append((img, bow_dist, color_dist))
 
     def query_image(self, img, bow_hist, color_hist, img_data, bow_voc, metric, sketch):
