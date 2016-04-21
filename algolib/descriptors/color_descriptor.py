@@ -10,12 +10,15 @@ class ColorDescriptor:
         # store the number of bins for the 3D histogram
         self.bins = bins
 
-    def describe(self, image):
+    def describe(self, image, sketch, threshold=100):
         # convert the image to the HSV color space and initialize
         # the features used to quantify the image
-        image = cv2.resize(image, (300, 300))
-        image = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
+        if not sketch:
+            image = cv2.resize(image, (300, 300))
+        else:
+            transparent_indices = np.where(image[:,:,3] < threshold)
 
+        image = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
         features = []
 
         # grab the dimensions and compute the center of the image
@@ -37,9 +40,21 @@ class ColorDescriptor:
         for (startX, endX, startY, endY) in segments:
             # construct a mask for each corner of the image, subtracting
             # the elliptical center from it
-            cornerMask = np.zeros(image.shape[:2], dtype="uint8")
-            cv2.rectangle(cornerMask, (startX, startY), (endX, endY), 255, -1)
-            cornerMask = cv2.subtract(cornerMask, ellipMask)
+
+            if sketch:
+                cornerMask = np.empty(image.shape[:2], dtype="uint8")
+                cornerMask.fill(255)
+                cornerMask[transparent_indices] = 0
+
+                rectangleMask = np.zeros(image.shape[:2], dtype="uint8")
+                cv2.rectangle(rectangleMask, (startX, startY), (endX, endY), 255, -1)
+                cornerMask[np.where(rectangleMask == 0)] = 0
+                cornerMask = cv2.subtract(cornerMask, ellipMask)
+
+            else:
+                cornerMask = np.zeros(image.shape[:2], dtype="uint8")
+                cv2.rectangle(cornerMask, (startX, startY), (endX, endY), 255, -1)
+                cornerMask = cv2.subtract(cornerMask, ellipMask)
 
             # extract a color histogram from the image, then update the
             # feature vector
@@ -48,7 +63,14 @@ class ColorDescriptor:
 
         # extract a color histogram from the elliptical region and
         # update the feature vector
-        hist = self.histogram(image, ellipMask)
+        if sketch:
+            cornerMask = np.empty(image.shape[:2], dtype = "uint8")
+            cornerMask.fill(255)
+            cornerMask[transparent_indices] = 0
+            cornerMask[np.where(ellipMask == 0)] = 0
+            hist = self.histogram(image, cornerMask)
+        else:
+            hist = self.histogram(image, ellipMask)
         features.extend(hist)
 
         # return the feature vector
@@ -60,10 +82,8 @@ class ColorDescriptor:
         # normalize the histogram
         hist = cv2.calcHist([image], [0, 1, 2], mask, self.bins,
                             [0, 180, 0, 256, 0, 256])
-        # print hist
-        # print hist.shape
-        hist = np.array(cv2.normalize(hist, hist).flatten())
-        # hist = cv2.normalize(hist, hist)
+
+        hist = np.array(cv2.normalize(hist,hist).flatten())
 
         # return the histogram
         return hist
