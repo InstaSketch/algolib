@@ -1,8 +1,5 @@
 import cv2
-import numpy as np
 import scipy
-import threading
-from queue import Queue
 from algolib.config import config
 from algolib.descriptors.bow_descriptor import BoWDescriptor
 from algolib.descriptors.color_descriptor import ColorDescriptor
@@ -22,9 +19,8 @@ class Query(object):
         result = scipy.square(h1 - h2) / (h1 + h2 + eps)
         return 0.5 * scipy.sum(result)
 
-    def compare(self, bow_hist, color_hist, queue, metric):
-        while not queue.empty():
-            img, bow, color = queue.get()
+    def compare(self, bow_hist, color_hist, img_data, metric):
+        for img, bow, color in img_data:
             bow_dist = scipy.spatial.distance.jaccard(
                 bow, bow_hist)
             color_dist = cv2.compareHist(
@@ -36,20 +32,11 @@ class Query(object):
             metric = 'chisqr_alt'
         metric = self.distance_metrics[metric]
         self.matchscores = []
-        queue = Queue()
-        for i in img_data:
-            queue.put(i)
         if img is not None:
             bow_hist_local = self.bow_des.describe(img, bow_voc)
             color_hist_local = self.color_des.describe(img, sketch)
 
-            for _ in range(8):
-                t = threading.Thread(
-                    target=self.compare(bow_hist_local, color_hist_local, queue, metric))
-                t.start()
+            self.compare(bow_hist_local, color_hist_local, img_data, metric)
         else:
-            for _ in range(2):
-                t = threading.Thread(
-                    target=self.compare(bow_hist, color_hist, queue, metric))
-                t.start()
+            self.compare(bow_hist, color_hist, img_data, metric)
         return self.matchscores
